@@ -1,0 +1,7 @@
+.git
+data/
+*.db
+*.db-*
+.authcli_history
+README.md
+Makefile

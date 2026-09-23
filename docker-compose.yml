@@ -1,0 +1,27 @@
+services:
+  authcli:
+    build: .
+    image: authcli:latest
+    # Interactive CLI: keep STDIN open and allocate a TTY so readline
+    # (history, tab completion, hidden password input) works.
+    stdin_open: true
+    tty: true
+    environment:
+      AUTH_SESSION_TIMEOUT: ${AUTH_SESSION_TIMEOUT:-30m}
+      AUTH_MAX_FAILED_ATTEMPTS: ${AUTH_MAX_FAILED_ATTEMPTS:-5}
+      AUTH_LOCKOUT_DURATION: ${AUTH_LOCKOUT_DURATION:-15m}
+      AUTH_TOTP_ISSUER: ${AUTH_TOTP_ISSUER:-AuthCLI}
+      AUTH_BCRYPT_COST: ${AUTH_BCRYPT_COST:-12}
+      TZ: ${TZ:-UTC}
+    volumes:
+      # SQLite database + command history persist in this named volume
+      # across container restarts and re-creations.
+      - authcli-data:/data
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  authcli-data:

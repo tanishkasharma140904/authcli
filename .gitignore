@@ -1,0 +1,7 @@
+/authcli
+/bin/
+data/
+*.db
+*.db-shm
+*.db-wal
+.authcli_history
