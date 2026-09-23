@@ -41,6 +41,72 @@ make test           # go vet + unit tests
 
 ---
 
+## Requirements checklist
+
+Each assignment requirement mapped to where it is implemented.
+
+### 1. Authentication system
+
+| Requirement | Implementation |
+|---|---|
+| Registration with username + password | `Service.Register` in [`internal/auth/service.go`](internal/auth/service.go#L96), with the policy in [`validate.go`](internal/auth/validate.go) |
+| Login with username + password | `Service.BeginLogin` / `CompleteLogin` in [`service.go`](internal/auth/service.go#L130) |
+| Optional TOTP 2FA (Google Authenticator compatible) | [`internal/auth/totp.go`](internal/auth/totp.go) (RFC 6238, SHA-1, 6 digits, 30 s); QR code rendered in [`commands.go`](internal/cli/commands.go#L161) |
+| Secure password storage | bcrypt, cost 12 by default (`AUTH_BCRYPT_COST`); see `Register` in [`service.go`](internal/auth/service.go#L96) |
+| Account lockout after failed attempts | `registerFailure` in [`service.go`](internal/auth/service.go#L214): wrong passwords **and** wrong TOTP codes count |
+| Session management with configurable timeout | Sessions table + `authorize` check in [`service.go`](internal/auth/service.go#L235); timeout set by `AUTH_SESSION_TIMEOUT` in [`config.go`](internal/config/config.go) |
+
+### 2. Database
+
+| Requirement | Implementation |
+|---|---|
+| SQLite / MySQL / PostgreSQL | SQLite via the pure-Go driver `modernc.org/sqlite`, see [`internal/db/db.go`](internal/db/db.go) |
+| Runs in a container | Embedded in the `authcli` container (SQLite is serverless) |
+| Persists across restarts | Named volume `authcli-data` mounted at `/data` in [`docker-compose.yml`](docker-compose.yml) |
+
+### 3. Command-line interface
+
+| Requirement | Implementation |
+|---|---|
+| Interactive prompt with history | readline REPL in [`internal/cli/cli.go`](internal/cli/cli.go); history saved to `/data/.authcli_history` (↑/↓, Ctrl-R) |
+| Tab completion | [`internal/cli/completer.go`](internal/cli/completer.go): offers only the commands valid in the current state |
+| Clear errors and success feedback | `report()` in [`cli.go`](internal/cli/cli.go) maps every error to a friendly ✔/✖ message |
+| `help` command | `cmdHelp` in [`commands.go`](internal/cli/commands.go#L48) |
+
+### 4. Commands
+
+| Before login | After login |
+|---|---|
+| ✅ `register` · `cmdRegister` | ✅ `whoami` · `cmdWhoAmI` |
+| ✅ `login` (+ TOTP if enabled) · `cmdLogin` | ✅ `enable-2fa` · `cmdEnable2FA` |
+| ✅ `help` · `cmdHelp` | ✅ `disable-2fa` · `cmdDisable2FA` |
+| ✅ `exit` · `cmdExit` | ✅ `logout` · `cmdLogout` |
+| | ✅ `help` · `cmdHelp` |
+
+All handlers are in [`internal/cli/commands.go`](internal/cli/commands.go).
+
+### 5. User details shown automatically after login
+
+`showDetails` in [`commands.go`](internal/cli/commands.go) runs right after a successful login and again on `whoami`:
+
+- ✅ Username
+- ✅ Registration date
+- ✅ MFA status (enabled/disabled)
+- ✅ Session expiration time, with the time remaining
+- ✅ Last login time ("never" on the first login)
+
+### Deliverables
+
+| Deliverable | Location |
+|---|---|
+| Source code, well-structured and commented | [`cmd/`](cmd/), [`internal/`](internal/) (see [Project structure](#project-structure)) |
+| Dockerfile + docker-compose.yml | [`Dockerfile`](Dockerfile), [`docker-compose.yml`](docker-compose.yml) |
+| README with setup + usage | This file |
+| Database schema / migrations | [`internal/db/migrations/0001_init.sql`](internal/db/migrations/0001_init.sql), applied automatically at startup |
+| Unit tests (optional) | [`internal/auth/service_test.go`](internal/auth/service_test.go), [`totp_test.go`](internal/auth/totp_test.go), [`config_test.go`](internal/config/config_test.go) |
+
+---
+
 ## Usage
 
 ```
