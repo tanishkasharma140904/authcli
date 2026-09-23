@@ -5,3 +5,4 @@ data/
 *.db-shm
 *.db-wal
 .authcli_history
+.DS_Store
